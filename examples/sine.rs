@@ -50,6 +50,8 @@ fn run() -> Result<(), coreaudio::Error> {
         }
         Ok(())
     }, 0)?;
+
+    audio_unit.init()?;
     audio_unit.start()?;
 
     std::thread::sleep(std::time::Duration::from_millis(3000));

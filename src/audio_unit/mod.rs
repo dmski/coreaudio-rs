@@ -328,6 +328,36 @@ impl AudioUnit {
             Ok(result)
         }
     }
+
+    /// Connects other AudioUnit as a data source for this one.
+    /// [Apple docs](https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/TheAudioUnit/TheAudioUnit.html#//apple_ref/doc/uid/TP40003278-CH12-SW17)
+    ///
+    /// Parameters
+    /// ----------
+    ///
+    /// - **self_input_element**: Input element of this unit
+    /// - **other**: AudioUnit to serve as a source of data for that input element. Must outlive &self.
+    /// - **other_output_bus**: Output element of the other unit
+    pub fn set_data_source<'o, 's : 'o>(
+        &'s mut self,
+        self_input_element: Element,
+        other: &'o AudioUnit,
+        other_output_element: Element,
+    ) -> Result<(), Error> {
+        let con = sys::AudioUnitConnection {
+            sourceAudioUnit: other.instance,
+            sourceOutputNumber: other_output_element,
+            destInputNumber: self_input_element
+        };
+
+        set_property(
+            self.instance,
+            sys::kAudioUnitProperty_MakeConnection,
+            Scope::Input,
+            self_input_element,
+            Some(&con)
+        )
+    }
 }
 
 
