@@ -111,10 +111,10 @@ impl StreamFormat {
 
         let flag = maybe_flag.unwrap_or(::std::u32::MAX -2147483647);
 
-        let bytes_per_frame = sample_format.size_in_bytes() as u32;
+        let bits_per_channel = sample_format.size_in_bytes() as u32 * 8;
+        let bytes_per_frame = sample_format.size_in_bytes() as u32 * channels_per_frame;
         const FRAMES_PER_PACKET: u32 = 1;
         let bytes_per_packet = bytes_per_frame * FRAMES_PER_PACKET;
-        let bits_per_channel = bytes_per_frame * 8;
 
         sys::AudioStreamBasicDescription {
             mSampleRate: sample_rate,
