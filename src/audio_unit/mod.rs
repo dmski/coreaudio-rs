@@ -277,6 +277,51 @@ impl AudioUnit {
     pub fn input_stream_format(&self, element: Element) -> Result<StreamFormat, Error> {
         self.stream_format(Scope::Input, element)
     }
+
+    /// Set parameter value for this AudioUnit
+    /// Parameters
+    /// ----------
+    ///
+    /// - **id**: The identifier of the parameter.
+    /// - **scope**: The audio unit scope for the parameter.
+    /// - **element**: The audio unit element for the parameter.
+    /// - **value**: Parameter value to set
+    pub fn set_parameter(&mut self, id: u32, scope: Scope, element: Element, value: f32) -> Result<(), Error> {
+        unsafe {
+            try_os_status!(sys::AudioUnitSetParameter(
+                self.instance,
+                id,
+                scope as c_uint,
+                element as c_uint,
+                value,
+                0 // should always be zero (https://developer.apple.com/documentation/audiotoolbox/1438454-audiounitsetparameter?language=occ)
+            ));
+
+            Ok(())
+        }
+    }
+
+    /// Get parameter value for this AudioUnit
+    /// Parameters
+    /// ----------
+    ///
+    /// - **id**: The identifier of the parameter.
+    /// - **scope**: The audio unit scope for the parameter.
+    /// - **element**: The audio unit element for the parameter.
+    pub fn get_parameter(&mut self, id: u32, scope: Scope, element: Element) -> Result<f32, Error> {
+        unsafe {
+            let mut result: f32 = 0.0;
+            try_os_status!(sys::AudioUnitGetParameter(
+                self.instance,
+                id,
+                scope as c_uint,
+                element as c_uint,
+                &mut result
+            ));
+
+            Ok(result)
+        }
+    }
 }
 
 
