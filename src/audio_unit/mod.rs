@@ -157,13 +157,19 @@ impl AudioUnit {
                 sys::AudioComponentInstanceNew(component, &mut instance as *mut sys::AudioUnit)
             );
 
-            // Initialise the audio unit!
-            try_os_status!(sys::AudioUnitInitialize(instance));
             Ok(AudioUnit {
                 instance: instance,
                 registered_render_callbacks: HashMap::new(),
                 maybe_input_callback: None,
             })
+        }
+    }
+
+    /// Initialise the audio unit!
+    pub fn init(&mut self) -> Result<(), Error> {
+        unsafe {
+            try_os_status!(sys::AudioUnitInitialize(self.instance));
+            Ok(())
         }
     }
 
