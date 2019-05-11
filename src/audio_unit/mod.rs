@@ -173,6 +173,14 @@ impl AudioUnit {
         }
     }
 
+    /// Uninitialise the audio unit
+    pub fn uninit(&mut self) -> Result<(), Error> {
+        unsafe {
+            try_os_status!(sys::AudioUnitUninitialize(self.instance));
+            Ok(())
+        }
+    }
+
     /// Sets the value for some property of the **AudioUnit**.
     ///
     /// To clear an audio unit property value, set the data paramater with `None::<()>`.
