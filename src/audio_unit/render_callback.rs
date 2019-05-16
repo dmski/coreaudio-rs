@@ -52,6 +52,7 @@ pub mod data {
     use std::slice;
     use super::super::StreamFormat;
     use super::super::Sample;
+    use super::super::audio_format::LinearPcmFlags;
     use sys;
 
     /// Audio data wrappers specific to the `AudioUnit`'s `AudioFormat`.
@@ -77,50 +78,46 @@ pub mod data {
         }
     }
 
-    // TODO: When testing with the `HalOutput` audio unit it seemed not to allow interleaved data.
-    // Even though the `IS_NON_INTERLEAVED` flag was not set, the audio unit continues to deliver
-    // the audio as non-interleaved samples anyway. Investigate this, as it might not even be
-    // possible to use this type with audio units!
-    //
-    // /// An interleaved linear PCM buffer with samples of type `S`.
-    // pub struct Interleaved<'a, S> {
-    //     pub buffer: &'a mut [S],
-    //     pub channels: usize,
-    // }
 
-    // // Implementation for an interleaved linear PCM audio format.
-    // impl<'a, S> Data for Interleaved<'a, S>
-    //     where S: Sample,
-    // {
-    //     fn does_stream_format_match(format: &StreamFormat) -> bool {
-    //         !format.flags.contains(linear_pcm_flags::IS_NON_INTERLEAVED) &&
-    //             S::sample_format().does_match_flags(format.flags)
-    //     }
+    /// An interleaved linear PCM buffer with samples of type `S`.
+    pub struct Interleaved<'a, S> {
+        pub buffer: &'a mut [S],
+        pub channels: usize,
+    }
 
-    //     #[allow(non_snake_case)]
-    //     unsafe fn from_input_proc_args(frames: u32, io_data: *mut sys::AudioBufferList) -> Self {
-    //         // We're expecting a single interleaved buffer which will be the first in the array.
-    //         let sys::AudioBuffer { mNumberChannels, mDataByteSize, mData } = (*io_data).mBuffers[0];
+    // Implementation for an interleaved linear PCM audio format.
+    impl<'a, S> Data for Interleaved<'a, S>
+        where S: Sample
+    {
+        fn does_stream_format_match(format: &StreamFormat) -> bool {
+            !format.flags.contains(LinearPcmFlags::IS_NON_INTERLEAVED) &&
+                S::sample_format().does_match_flags(format.flags)
+        }
 
-    //         // Ensure that the size of the data matches the size of the sample format
-    //         // multiplied by the number of frames.
-    //         //
-    //         // TODO: Return an Err instead of `panic`ing.
-    //         let buffer_len = frames as usize * mNumberChannels as usize;
-    //         let expected_size = ::std::mem::size_of::<S>() * buffer_len;
-    //         assert!(mDataByteSize as usize == expected_size);
+        #[allow(non_snake_case)]
+        unsafe fn from_input_proc_args(frames: u32, io_data: *mut sys::AudioBufferList) -> Self {
+            // We're expecting a single interleaved buffer which will be the first in the array.
+            let sys::AudioBuffer { mNumberChannels, mDataByteSize, mData } = (*io_data).mBuffers[0];
 
-    //         let buffer: &mut [S] = {
-    //             let buffer_ptr = mData as *mut S;
-    //             slice::from_raw_parts_mut(buffer_ptr, buffer_len)
-    //         };
+            // Ensure that the size of the data matches the size of the sample format
+            // multiplied by the number of frames.
+            //
+            // TODO: Return an Err instead of `panic`ing.
+            let buffer_len = frames as usize * mNumberChannels as usize;
+            let expected_size = ::std::mem::size_of::<S>() * buffer_len;
+            assert_eq!(mDataByteSize as usize, expected_size);
 
-    //         Interleaved {
-    //             buffer: buffer,
-    //             channels: mNumberChannels as usize,
-    //         }
-    //     }
-    // }
+            let buffer: &mut [S] = {
+                let buffer_ptr = mData as *mut S;
+                slice::from_raw_parts_mut(buffer_ptr, buffer_len)
+            };
+
+            Interleaved {
+                buffer: buffer,
+                channels: mNumberChannels as usize,
+            }
+        }
+    }
 
     /// A wrapper around the pointer to the `mBuffers` array.
     pub struct NonInterleaved<S> {
@@ -200,7 +197,7 @@ pub mod data {
         fn does_stream_format_match(format: &StreamFormat) -> bool {
             // TODO: This is never set, even though the default ABSD on OS X is non-interleaved!
             // Should really investigate why this is.
-            // format.flags.contains(linear_pcm_flags::IS_NON_INTERLEAVED) &&
+            format.flags.contains(linear_pcm_flags::IS_NON_INTERLEAVED) &&
                 S::sample_format().does_match_flags(format.flags)
         }
 
