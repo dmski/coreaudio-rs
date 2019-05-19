@@ -32,7 +32,7 @@ pub struct Args<D> {
     pub data: D,
     /// Timing information for the callback.
     pub time_stamp: sys::AudioTimeStamp,
-    /// TODO
+    /// Element number (== bus number) the callback is being called on
     pub bus_number: u32,
     /// The number of frames in the buffer as `usize` for easier indexing.
     pub num_frames: usize,
@@ -80,13 +80,19 @@ pub mod data {
 
 
     /// An interleaved linear PCM buffer with samples of type `S`.
-    pub struct Interleaved<'a, S> {
-        pub buffer: &'a mut [S],
-        pub channels: usize,
+    pub struct Interleaved<'a, S: 'a> {
+        samples: &'a mut [S],
+        channels: usize
+    }
+
+    impl <'a, S: 'a> Interleaved<'a, S> {
+        pub fn samples(&self) -> &[S] { self.samples }
+        pub fn samples_mut(&mut self) -> &mut [S] { self.samples }
+        pub fn channel_count(&self) -> usize { self.channels }
     }
 
     // Implementation for an interleaved linear PCM audio format.
-    impl<'a, S> Data for Interleaved<'a, S>
+    impl<'a, S: 'a> Data for Interleaved<'a, S>
         where S: Sample
     {
         fn does_stream_format_match(format: &StreamFormat) -> bool {
@@ -113,8 +119,8 @@ pub mod data {
             };
 
             Interleaved {
-                buffer: buffer,
-                channels: mNumberChannels as usize,
+                samples: buffer,
+                channels: mNumberChannels as usize
             }
         }
     }
@@ -195,9 +201,7 @@ pub mod data {
         where S: Sample,
     {
         fn does_stream_format_match(format: &StreamFormat) -> bool {
-            // TODO: This is never set, even though the default ABSD on OS X is non-interleaved!
-            // Should really investigate why this is.
-            format.flags.contains(linear_pcm_flags::IS_NON_INTERLEAVED) &&
+            format.flags.contains(LinearPcmFlags::IS_NON_INTERLEAVED) &&
                 S::sample_format().does_match_flags(format.flags)
         }
 
@@ -394,9 +398,7 @@ impl AudioUnit {
     {
         // First, we'll retrieve the stream format so that we can ensure that the given callback
         // format matches the audio unit's format.
-        let id = sys::kAudioUnitProperty_StreamFormat;
-        let asbd = self.get_property(id, Scope::Input, element)?;
-        let stream_format = super::StreamFormat::from_asbd(asbd)?;
+        let stream_format = self.input_stream_format(element)?;
 
         // If the stream format does not match, return an error indicating this.
         if !D::does_stream_format_match(&stream_format) {

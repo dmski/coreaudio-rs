@@ -17,6 +17,10 @@ name = "example-sine"
 path = "examples/sine.rs"
 
 [[bin]]
+name = "example-interleaved-sine"
+path = "examples/interleaved_sine.rs"
+
+[[bin]]
 name = "example-crossfade"
 path = "examples/crossfade.rs"
 
